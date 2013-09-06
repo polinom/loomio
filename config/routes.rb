@@ -14,6 +14,7 @@ Loomio::Application.routes.draw do
                                     registrations: 'users/registrations' }
 
   get "/inbox", to: "inbox#index", as: :inbox
+  get "/inbox/size", to: "inbox#size", as: :inbox_size
   get '/inbox/preferences', to: 'inbox#preferences', as: :inbox_preferences
   put '/inbox/update_preferences', to: 'inbox#update_preferences', as: :update_inbox_preferences
   match '/inbox/mark_as_read', to: 'inbox#mark_as_read', as: :mark_as_read_inbox
@@ -157,6 +158,9 @@ Loomio::Application.routes.draw do
   get 'collaborate' => redirect('/')
   get 'woc' => redirect('/')
 
+  resources :contact_messages, only: [:new, :create,]
+  match '/contact', to: 'contact_messages#new'
+
   #redirect old request for new group
   match "/request_new_group", to: "group_requests#selection"
 
@@ -169,10 +173,16 @@ Loomio::Application.routes.draw do
   get '/how*it*works' => redirect('/about#how-it-works')
   get '/pages/get*involved' => redirect('/about')
   get '/pages/how*it*works' => redirect('/about#how-it-works')
-  get '/pages/contact' => redirect('/about#about-us')
-  get '/contact' => redirect('/about#about-us')
   get '/pages/privacy' => redirect('/privacy_policy')
   get '/pages/about' => redirect('/about#about-us')
+  match '/pages/contact', to: 'contact_messages#new'
+
+  resources :attachments, only: [:create, :new] do
+    collection do
+      get 'sign'
+      get :iframe_upload_result
+    end
+  end
 
   get 'blog' => redirect('http://blog.loomio.org')
   get 'press' => redirect('http://blog.loomio.org/press-pack')

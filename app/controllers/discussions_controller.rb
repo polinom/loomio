@@ -18,7 +18,7 @@ class DiscussionsController < GroupBaseController
 
   def create
     current_user.update_attributes(uses_markdown: params[:discussion][:uses_markdown])
-    
+
     @discussion = Discussion.new(permitted_params.discussion)
     @discussion.author = current_user
 
@@ -79,7 +79,9 @@ class DiscussionsController < GroupBaseController
     if current_user
       @destination_groups = DiscussionMover.destination_groups(@discussion.group, current_user)
       @uses_markdown = current_user.uses_markdown?
-      ViewLogger.motion_viewed(@current_motion, current_user) if @current_motion
+      if @current_motion
+        @current_motion.as_read_by(current_user).viewed!
+      end
       @discussion.as_read_by(current_user).viewed!
     end
     @activity = Kaminari.paginate_array(@discussion.filtered_activity).page(params[:page]).per(50)
@@ -99,8 +101,11 @@ class DiscussionsController < GroupBaseController
   end
 
   def add_comment
-    if params[:comment].present?
-      @comment = @discussion.add_comment(current_user, params[:comment], params[:uses_markdown])
+    if params[:comment].present? || params[:attachments].present?
+      @discussion = Discussion.find(params[:id])
+      @comment = @discussion.add_comment(current_user, params[:comment],
+                                         uses_markdown: params[:uses_markdown], attachments: params[:attachments])
+      current_user.update_attributes(uses_markdown: params[:uses_markdown])
       load_cached_comment_info
       @discussion.as_read_by(current_user).viewed!
       unless request.xhr?
@@ -118,7 +123,6 @@ class DiscussionsController < GroupBaseController
       flash[:notice] = "A current proposal already exists for this disscussion."
     else
       @motion = Motion.new
-      @motion.set_default_close_at_date_and_time
       @motion.discussion = discussion
       @group = GroupDecorator.new(discussion.group)
       render 'motions/new'

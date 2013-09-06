@@ -50,6 +50,11 @@
     background-image:url('/assets/heart-small.png');
     margin: 1px 0 0 0;
   }
+  &.inbox-icon {
+    /*background-image:url('/assets/inbox-icon-24x22.png');*/
+    background-image:url('/assets/inbox-nav-icon.png');
+    margin: 2px 0 0 0px;
+  }
   &.notification-icon {
     background-image:url('/assets/notification-24.png');
     margin: 0;
@@ -64,4 +69,14 @@
 .header-bar-icon{
   bottom: 2px;
   position: relative;
+}
+
+.attachment-icon {
+  background-image:url('/assets/paperclip20.png');
+  background-repeat: no-repeat;
+  height: 22px;
+  margin: 0;
+  opacity: .3;
+  width: 22px;
+  &:hover { opacity: .8; }
 }
