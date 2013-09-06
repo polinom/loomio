@@ -1,5 +1,6 @@
 - if current_motion
-  - motion_activity = motion_activity_count_for(current_motion, current_user)
+  - motion_reader = current_motion.as_read_by(current_user)
+  - motion_activity = motion_reader.unread_activity_count
   .icon.shim{:id => "graph_#{current_motion.id}"}
     .motion-sparkline
       -values = current_motion.vote_counts.values
