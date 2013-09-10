@@ -158,8 +158,8 @@ class User < ActiveRecord::Base
   end
 
   def mark_notifications_as_viewed!(latest_viewed_id)
-    unviewed_notifications.where("id <= ?", latest_viewed_id).
-      update_all(:viewed_at => Time.now)
+    notifications.where('id <= ?', latest_viewed_id).
+      update_all(:viewed_at => Time.zone.now)
   end
 
   def self.loomio_helper_bot
@@ -186,7 +186,7 @@ class User < ActiveRecord::Base
 
   def position(motion)
     if motion.user_has_voted?(self)
-      get_vote_for(motion).position
+      motion.last_position_by_user(self)
     end
   end
 

@@ -1,5 +1,7 @@
 class Inbox
+  UNREAD_PER_GROUP_LIMIT = 20
   attr_reader :size
+  attr_reader :grouped_items
 
   def initialize(user)
     @user = user
@@ -12,6 +14,12 @@ class Inbox
     end
   end
 
+  def get_size_without_load
+    num_discussions = Queries::VisibleDiscussions.new(user: @user, group_ids: group_ids).unread.readonly(false).count
+    num_motions = Queries::VisibleMotions.new(user: @user, group_ids: group_ids).unread.voting.readonly(false).count
+    (num_motions + num_discussions)
+  end
+
   def load
     @grouped_items = {}
     @unread_discussions_per_group = {}
@@ -19,7 +27,7 @@ class Inbox
       @unread_discussions_per_group[group] = unread_discussions_for(group).size
 
       discussions = unread_discussions_for(group).limit(unread_per_group_limit)
-      motions = unvoted_motions_for(group)
+      motions = unread_motions_for(group)
       next if discussions.empty? && motions.empty?
 
       aligned_items = []
@@ -62,7 +70,7 @@ class Inbox
   end
 
   def unread_per_group_limit
-    20
+    UNREAD_PER_GROUP_LIMIT
   end
 
   def unread_items_exceeds_max_for(group)
@@ -77,6 +85,20 @@ class Inbox
     @user.memberships.where('inbox_position is not null').order(:inbox_position).map(&:group)
   end
 
+  def group_ids
+    @user.memberships.where('inbox_position is not null').order(:inbox_position).pluck(:group_id)
+  end
+
+  def clear_all_in_group(group)
+    unread_discussions_for(group).each do |discussion|
+      discussion.as_read_by(@user).viewed!
+    end
+
+    unread_motions_for(group).each do |motion|
+      motion.as_read_by(@user).viewed!
+    end
+  end
+
   def unread_discussions_for(group)
     Queries::VisibleDiscussions.new(user: @user, groups: [group]).unread.
                                 order_by_latest_comment.readonly(false)
@@ -84,5 +106,10 @@ class Inbox
 
   def unvoted_motions_for(group)
     Queries::UnvotedMotions.for(@user, group)
+  end
+
+  def unread_motions_for(group)
+    Queries::VisibleMotions.new(user: @user, groups: [group]).unread.voting.
+                                order_by_latest_activity.readonly(false)
   end
 end

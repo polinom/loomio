@@ -5,10 +5,11 @@ class InboxController < BaseController
   end
 
   def size
-    load_inbox
+    @inbox = Inbox.new(current_user)
+    size = @inbox.get_size_without_load
 
-    if @inbox.size > 0
-      render text: @inbox.size
+    if size > 0
+      render text: size
     else
       render text: ''
     end
@@ -25,29 +26,42 @@ class InboxController < BaseController
   end
 
   def mark_as_read
-    item = load_resource_from_params
-    item.as_read_by(current_user).viewed!
-    redirect_to_group_or_head_ok
-  end
-
-  def mark_all_as_read
-    discussion_ids = params[:discussion_ids].split('x').map(&:to_i)
-    current_user.discussions.where(id: discussion_ids).each do |d|
-      d.as_read_by(current_user).viewed!
+    if params.has_key?(:discussion_ids)
+      ids = params[:discussion_ids].split('x').map(&:to_i)
+      current_user.discussions.where(id: ids).each do |discussion|
+        discussion.as_read_by(current_user).viewed!
+      end
     end
-    redirect_to_group_or_head_ok
+
+    if params.has_key?(:motion_ids)
+      ids = params[:motion_ids].split('x').map(&:to_i)
+      current_user.motions.where(id: ids).each do |motion|
+        motion.as_read_by(current_user).viewed!
+      end
+    end
+
+    redirect_back_or_head_ok
+  end
+  
+  def mark_all_as_read
+    @inbox = Inbox.new(current_user)
+    group = current_user.groups.find(params[:id])
+    @inbox.clear_all_in_group(group)
+    redirect_back_or_head_ok
   end
 
   def unfollow
     item = load_resource_from_params
     @inbox.unfollow!(item)
-    redirect_to_group_or_head_ok
+    redirect_back_or_head_ok
   end
 
   private
-  def redirect_to_group_or_head_ok
+  def redirect_back_or_head_ok
     if request.xhr?
-      head :ok
+      size = Inbox.new(current_user).get_size_without_load
+      size = '' if size == 0
+      render js: "$('#inbox-count').text('#{size}')"
     else
       redirect_to inbox_path
     end
@@ -61,8 +75,11 @@ class InboxController < BaseController
   def load_resource_from_params
     class_name = params[:class]
     id = params[:id]
+
     if class_name == 'Discussion'
-      current_user.discussions.find id
+      current_user.discussions.find_by_id(id)
+    elsif class_name == 'Motion'
+      current_user.motions.find_by_id(id)
     end
   end
 
